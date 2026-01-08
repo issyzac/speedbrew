@@ -13,59 +13,99 @@
 
 <body>
   <div id="app">
-    <header>
-      <div class="logo">
-        <img src="/src/assets/hze-icon.png" alt="Logo" class="logo-icon" />
-        <h1>SpeedBrew</h1>
-      </div>
-      <div class="stats-summary" id="stats-bar">
-        <!-- Stats injected here -->
-        <div class="stat-item">
-          <span class="label">Avg Time</span>
-          <span class="value" id="avg-time">--:--</span>
-        </div>
-        <div class="stat-item">
-          <span class="label">Bottleneck</span>
-          <span class="value warning" id="bottleneck-stage">None</span>
+    <!-- Welcome Screen -->
+    <div id="welcome-view" class="welcome-container">
+      <div class="welcome-content">
+        <img src="/src/assets/hze-icon.png" alt="Logo" class="welcome-logo" />
+        <h1 class="welcome-title">SpeedBrew</h1>
+        <p class="welcome-subtitle">Select Location</p>
+        <div class="location-buttons">
+          <button class="btn-location" data-loc="Mbezi">📍 Mbezi</button>
+          <button class="btn-location" data-loc="Victoria">📍 Victoria</button>
         </div>
       </div>
-    </header>
+    </div>
 
-    <main>
-      <section class="controls">
-        <button id="btn-customer-in" class="btn-primary-large">
-          <span class="plus">+</span> Customer Entered
-        </button>
-        <div id="limit-warning" class="limit-warning">Max limit (5) reached. Finish an order.</div>
-      </section>
-
-      <section class="active-orders" id="orders-container">
-        <!-- Order Cards will go here -->
-        <div class="empty-state">
-          <p>No active orders. Tap "+" when a customer enters.</p>
-        </div>
-      </section>
-
-      <section class="history-section">
-        <h2>Order History</h2>
-
-        <div class="tabs">
-          <button class="tab-btn active" data-tab="std">Takeaway / Delivery</button>
-          <button class="tab-btn" data-tab="dinein">Dine-in</button>
+    <!-- Main App Screen -->
+    <div id="main-view" class="hidden">
+      <header>
+        <div class="logo">
+          <img src="/src/assets/hze-icon.png" alt="Icon" class="logo-icon" />
+          <h1>SpeedBrew</h1>
+          <div class="location-display-wrapper">
+            <span class="location-badge" id="current-location-badge">📍 Mbezi</span>
+            <button id="btn-change-location" class="btn-icon" title="Change Location">↺</button>
+          </div>
         </div>
 
-        <div id="tab-std" class="tab-content active">
-          <div id="history-container-std" class="history-list"></div>
-        </div>
-        <div id="tab-dinein" class="tab-content">
-          <div id="history-container-dinein" class="history-list"></div>
-        </div>
-      </section>
-    </main>
+      </header>
 
-    <footer>
-      <p>&copy; 2026 Harakati za Enzi. All rights reserved.</p>
-    </footer>
+      <main>
+        <section class="controls">
+          <button id="btn-customer-in" class="btn-primary-large">
+            <span class="plus">+</span> Customer Entered
+          </button>
+          <div id="limit-warning" class="limit-warning">Max limit (5) reached. Finish an order.</div>
+        </section>
+
+        <section class="active-orders" id="orders-container">
+          <!-- Order Cards will go here -->
+          <div class="empty-state">
+            <p>No active orders. Tap "+" when a customer enters.</p>
+          </div>
+        </section>
+
+
+
+        <section class="history-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin-bottom: 0;">Orders Analysis</h2>
+            <input type="date" id="date-picker" class="date-picker-input">
+          </div>
+
+          <div class="stats-grid">
+            <div class="stats-summary" id="stats-bar">
+              <div class="stat-item">
+                <span class="label">Pcs</span>
+                <span class="value" id="total-orders">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Avg Time</span>
+                <span class="value" id="avg-time">--:--</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Best</span>
+                <span class="value success" id="best-time">--:--</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Worst</span>
+                <span class="value warning-light" id="worst-time">--:--</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Bottleneck</span>
+                <span class="value warning" id="bottleneck-stage">None</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="std">Takeaway / Delivery</button>
+            <button class="tab-btn" data-tab="dinein">Dine-in</button>
+          </div>
+
+          <div id="tab-std" class="tab-content active">
+            <div id="history-container-std" class="history-list"></div>
+          </div>
+          <div id="tab-dinein" class="tab-content">
+            <div id="history-container-dinein" class="history-list"></div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>&copy; 2026 Harakati za Enzi. All rights reserved.</p>
+      </footer>
+    </div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

@@ -1,6 +1,25 @@
 import './style.css';
+import { supabase } from './supabaseClient';
 
-let orders = JSON.parse(localStorage.getItem('espresso-orders') || '[]');
+let orders = [];
+
+const fetchOrders = async () => {
+    const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('entered_at', { ascending: true });
+
+    if (error) {
+        console.error('Error loading orders:', error);
+        return;
+    }
+
+    orders = data || [];
+    render();
+};
+
+fetchOrders();
+
 const container = document.getElementById('orders-container');
 const btnAdd = document.getElementById('btn-customer-in');
 const elWarning = document.getElementById('limit-warning');
@@ -10,6 +29,71 @@ const historyStd = document.getElementById('history-container-std');
 const historyDine = document.getElementById('history-container-dinein');
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
+
+// Location
+// Location
+const welcomeView = document.getElementById('welcome-view');
+const mainView = document.getElementById('main-view');
+const btnLocations = document.querySelectorAll('.btn-location');
+const currentLocationBadge = document.getElementById('current-location-badge');
+const btnChangeLocation = document.getElementById('btn-change-location');
+
+// Default to Mbezi if element missing, though logic assumes element exists
+let currentLocation = 'Mbezi';
+
+// Handle Start Screen Selection
+btnLocations.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const loc = btn.dataset.loc;
+        currentLocation = loc;
+
+        // Update Header Badge
+        if (currentLocationBadge) currentLocationBadge.innerText = `📍 ${loc}`;
+
+        // Switch Views
+        welcomeView.classList.add('hidden');
+        mainView.classList.remove('hidden');
+
+        render();
+    });
+});
+
+const datePicker = document.getElementById('date-picker');
+
+// Helper: Get 'YYYY-MM-DD' from a timestamp (uses Local Time)
+const getDateString = (ts) => {
+    const d = new Date(ts);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getTodayString = () => {
+    return getDateString(Date.now());
+};
+
+// Date State
+let selectedDate = getTodayString(); // Default Today 'YYYY-MM-DD'
+
+if (datePicker) {
+    datePicker.value = selectedDate;
+    datePicker.max = selectedDate; // Prevent selecting future dates if needed, though user said "users should be able to select a different day"
+
+    datePicker.addEventListener('change', (e) => {
+        selectedDate = e.target.value;
+        render(); // Re-render with new filter
+    });
+}
+
+// Handle Change Location (Back to Start)
+if (btnChangeLocation) {
+    btnChangeLocation.addEventListener('click', () => {
+        // Switch Views back to Welcome
+        mainView.classList.add('hidden');
+        welcomeView.classList.remove('hidden');
+    });
+}
 
 // New state for selected stats filter (defaults to 'std' aka Takeaway)
 let currentTab = 'std';
@@ -36,16 +120,28 @@ tabBtns.forEach(btn => {
 const elAvgTime = document.getElementById('avg-time');
 const elBottleneck = document.getElementById('bottleneck-stage');
 
-// Generate ID
-const getNextId = () => {
-    if (orders.length === 0) return 1;
-    const max = orders.reduce((m, o) => Math.max(m, o.id), 0);
-    return max + 1;
-};
-
 // Check Limit
 const checkLimit = () => {
-    const activeCount = orders.filter(o => o.status !== 'done').length;
+    const today = getTodayString();
+    const isToday = selectedDate === today;
+
+    if (!isToday) {
+        // Disable everything if not viewing today
+        btnAdd.disabled = true;
+        btnAdd.style.opacity = '0.5';
+        btnAdd.style.cursor = 'not-allowed';
+        // Hide warning as it's not relevant
+        elWarning.classList.remove('visible');
+        return;
+    }
+
+    // Reset styles
+    btnAdd.style.opacity = '1';
+    btnAdd.style.cursor = 'pointer';
+
+    // Check against active orders (not done) OF CURRENT LOCATION
+    const activeCount = orders.filter(o => o.status !== 'done' && (o.location === currentLocation || (!o.location && currentLocation === 'Mbezi'))).length;
+
     if (activeCount >= 5) {
         btnAdd.disabled = true;
         elWarning.classList.add('visible');
@@ -57,53 +153,70 @@ const checkLimit = () => {
 
 // Add Order
 if (btnAdd) {
-    btnAdd.addEventListener('click', () => {
-        const activeCount = orders.filter(o => o.status !== 'done').length;
+    btnAdd.addEventListener('click', async () => {
+        // Check limit for current location
+        const activeCount = orders.filter(o => o.status !== 'done' && (o.location === currentLocation || (!o.location && currentLocation === 'Mbezi'))).length;
         if (activeCount >= 5) return;
 
-        const order = {
-            id: getNextId(),
+        const newOrder = {
             name: '',
             tag: 'Dine-in', // Default to Dine-in
-            enteredAt: Date.now(),
-            orderedAt: null,
-            paidAt: null,
-            deliveredAt: null,
+            location: currentLocation, // Tag with current location
+            entered_at: Date.now(),
+            ordered_at: null,
+            paid_at: null,
+            delivered_at: null,
             status: 'queue'
         };
-        orders.push(order);
-        save();
-        render();
+
+        const { data, error } = await supabase
+            .from('orders')
+            .insert(newOrder)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error adding order:', error);
+            return;
+        }
+
+        if (data) {
+            orders.push(data);
+            render();
+        }
     });
 }
 
-const save = () => {
-    localStorage.setItem('espresso-orders', JSON.stringify(orders));
-};
-
-const updateName = (id, newName) => {
+const updateName = async (id, newName) => {
     const order = orders.find(o => o.id === id);
     if (order) {
         order.name = newName;
-        save();
+        // Optimistic update done above, now sync
+        await supabase.from('orders').update({ name: newName }).eq('id', id);
     }
 }
 
-const updateTag = (id, newTag) => {
+const updateTag = async (id, newTag) => {
     const order = orders.find(o => o.id === id);
     if (order && order.status === 'queue') {
         order.tag = newTag;
-        save();
-        render();
+        render(); // Re-render for UI update
+        await supabase.from('orders').update({ tag: newTag }).eq('id', id);
     }
 }
 
 // DELETE/CANCEL ORDER
-const cancelOrder = (id) => {
+const cancelOrder = async (id) => {
     if (!confirm('Cancel this order?')) return;
+
+    // Optimistic update
     orders = orders.filter(o => o.id !== id);
-    save();
     render();
+
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) {
+        console.error('Error deleting order:', error);
+    }
 }
 
 const formatTime = (ms) => {
@@ -124,40 +237,52 @@ const getStatusLabel = (status) => {
 };
 
 // --- CORE LOGIC: ADVANCE ORDER ---
-const advanceOrder = (id) => {
+const advanceOrder = async (id) => {
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
     const now = Date.now();
     const isDineIn = order.tag === 'Dine-in';
 
+    // Calculate new state
+    const updates = {};
+
     if (order.status === 'queue') {
-        order.orderedAt = now;
+        updates.ordered_at = now;
         if (isDineIn) {
-            order.status = 'prep'; // Queue -> Prep
+            updates.status = 'prep';
         } else {
-            order.status = 'payment'; // Queue -> Payment
+            updates.status = 'payment';
         }
     }
     else if (order.status === 'payment') {
-        order.paidAt = now;
-        order.status = 'prep';
+        updates.paid_at = now;
+        updates.status = 'prep';
     }
     else if (order.status === 'prep') {
-        order.deliveredAt = now;
+        updates.delivered_at = now;
         if (isDineIn) {
-            order.status = 'served';
+            updates.status = 'served';
         } else {
-            order.status = 'done';
+            updates.status = 'done';
         }
     }
     else if (order.status === 'served') {
-        order.paidAt = now;
-        order.status = 'done';
+        updates.paid_at = now;
+        updates.status = 'done';
     }
 
-    save();
+    // Apply locally
+    Object.assign(order, updates);
     render();
+
+    // Sync to DB
+    const { error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', id);
+
+    if (error) console.error('Error updating status:', error);
 };
 
 const render = () => {
@@ -168,15 +293,30 @@ const render = () => {
 };
 
 const renderActive = () => {
-    const activeOrders = orders.filter(o => o.status !== 'done').sort((a, b) => a.enteredAt - b.enteredAt);
+    const today = getTodayString();
+    // Filter active orders by LOCATION and DATE
+    const activeOrders = orders.filter(o =>
+        (o.status !== 'done') &&
+        (o.location === currentLocation || (!o.location && currentLocation === 'Mbezi')) &&
+        getDateString(o.entered_at) === selectedDate
+    ).sort((a, b) => a.entered_at - b.entered_at);
 
     if (!container) return;
     container.innerHTML = '';
 
+    // Hide active section title or something? No, just show empty state if none.
+    // If not today, maybe change empty text.
+
+    const isToday = selectedDate === today;
+
     if (activeOrders.length === 0) {
+        const msg = isToday
+            ? `No active orders for ${currentLocation}.<br>Tap "+" when a customer enters.`
+            : `No active orders found for ${selectedDate}.`;
+
         container.innerHTML = `
           <div class="empty-state">
-            <p>No active orders. Tap "+" when a customer enters.</p>
+            <p>${msg}</p>
           </div>`;
     } else {
         activeOrders.forEach(order => {
@@ -277,8 +417,12 @@ const renderActive = () => {
 const renderHistory = () => {
     if (!historyStd || !historyDine) return;
 
-    // Get completed orders
-    const history = orders.filter(o => o.status === 'done').sort((a, b) => b.deliveredAt - a.deliveredAt);
+    // Get completed orders filtered by LOCATION and DATE
+    const history = orders.filter(o =>
+        o.status === 'done' &&
+        (o.location === currentLocation || (!o.location && currentLocation === 'Mbezi')) &&
+        getDateString(o.entered_at) === selectedDate
+    ).sort((a, b) => b.delivered_at - a.delivered_at);
 
     historyStd.innerHTML = '';
     historyDine.innerHTML = '';
@@ -287,24 +431,23 @@ const renderHistory = () => {
         const isDineIn = order.tag === 'Dine-in';
         const safeSub = (a, b) => (a && b) ? (a - b) : 0;
 
-        // Calculate durations
         let totalTime = 0, queueTime = 0, payTime = 0, prepTime = 0;
 
         if (isDineIn) {
-            totalTime = safeSub(order.paidAt, order.enteredAt);
-            queueTime = safeSub(order.orderedAt, order.enteredAt);
-            prepTime = safeSub(order.deliveredAt, order.orderedAt);
-            payTime = safeSub(order.paidAt, order.deliveredAt);
+            totalTime = safeSub(order.paid_at, order.entered_at);
+            queueTime = safeSub(order.ordered_at, order.entered_at);
+            prepTime = safeSub(order.delivered_at, order.ordered_at);
+            payTime = safeSub(order.paid_at, order.delivered_at);
         } else {
-            totalTime = safeSub(order.deliveredAt, order.enteredAt);
-            queueTime = safeSub(order.orderedAt, order.enteredAt);
-            payTime = safeSub(order.paidAt, order.orderedAt);
-            prepTime = safeSub(order.deliveredAt, order.paidAt);
+            totalTime = safeSub(order.delivered_at, order.entered_at);
+            queueTime = safeSub(order.ordered_at, order.entered_at);
+            payTime = safeSub(order.paid_at, order.ordered_at);
+            prepTime = safeSub(order.delivered_at, order.paid_at);
         }
 
-        const pQueue = (queueTime / totalTime) * 100;
-        const pPay = (payTime / totalTime) * 100;
-        const pPrep = (prepTime / totalTime) * 100;
+        const pQueue = totalTime > 0 ? (queueTime / totalTime) * 100 : 0;
+        const pPay = totalTime > 0 ? (payTime / totalTime) * 100 : 0;
+        const pPrep = totalTime > 0 ? (prepTime / totalTime) * 100 : 0;
 
         let barHTML = '';
         if (isDineIn) {
@@ -344,23 +487,55 @@ const renderHistory = () => {
     const stdHistory = history.filter(h => h.tag !== 'Dine-in');
     const dineHistory = history.filter(h => h.tag === 'Dine-in');
 
+    const getLegend = (type) => {
+        const labels = type === 'Dine-in'
+            ? { r: 'Queue', g: 'Prep & Serve', o: 'Eat & Pay' }
+            : { r: 'Queue', o: 'Payment', g: 'Preparation' };
+
+        return `
+        <div class="legend-container" style="border-top:none; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:0.5rem; margin-bottom:0.5rem; margin-top:0;">
+            <div class="legend-item"><div class="legend-dot seg-queue"></div> ${labels.r}</div>
+            ${type === 'Dine-in'
+                ? `<div class="legend-item"><div class="legend-dot seg-prep"></div> ${labels.g}</div>
+                   <div class="legend-item"><div class="legend-dot seg-pay"></div> ${labels.o}</div>`
+                : `<div class="legend-item"><div class="legend-dot seg-pay"></div> ${labels.o}</div>
+                   <div class="legend-item"><div class="legend-dot seg-prep"></div> ${labels.g}</div>`
+            }
+        </div>
+        `;
+    };
+
     const empty = '<p class="empty-text" style="padding:1rem; opacity:0.6;">No history yet.</p>';
 
-    if (stdHistory.length === 0) historyStd.innerHTML = empty;
-    else stdHistory.forEach(order => historyStd.appendChild(createHistoryItem(order)));
+    if (stdHistory.length === 0) {
+        historyStd.innerHTML = empty;
+    } else {
+        historyStd.innerHTML = getLegend('std');
+        stdHistory.forEach(order => historyStd.appendChild(createHistoryItem(order)));
+    }
 
-    if (dineHistory.length === 0) historyDine.innerHTML = empty;
-    else dineHistory.forEach(order => historyDine.appendChild(createHistoryItem(order)));
+    if (dineHistory.length === 0) {
+        historyDine.innerHTML = empty;
+    } else {
+        historyDine.innerHTML = getLegend('Dine-in');
+        dineHistory.forEach(order => historyDine.appendChild(createHistoryItem(order)));
+    }
 };
 
 const updateStats = () => {
     if (!elAvgTime || !elBottleneck) return;
 
-    // Filter completed orders based on current tab
-    // currentTab can be 'std' (Standard) or 'dinein'
+    // Filter completed orders based on current tab AND LOCATION AND DATE
     const completedOrders = orders.filter(o => {
         if (o.status !== 'done') return false;
 
+        // Location check
+        if (!(o.location === currentLocation || (!o.location && currentLocation === 'Mbezi'))) return false;
+
+        // Date check
+        if (getDateString(o.entered_at) !== selectedDate) return false;
+
+        // Tab check
         if (currentTab === 'dinein') {
             return o.tag === 'Dine-in';
         } else {
@@ -371,6 +546,13 @@ const updateStats = () => {
     if (completedOrders.length === 0) {
         elAvgTime.innerText = '--:--';
         elBottleneck.innerText = 'No Data';
+        // Reset new stats
+        const elTotal = document.getElementById('total-orders');
+        const elBest = document.getElementById('best-time');
+        const elWorst = document.getElementById('worst-time');
+        if (elTotal) elTotal.innerText = '0';
+        if (elBest) elBest.innerText = '--:--';
+        if (elWorst) elWorst.innerText = '--:--';
         return;
     }
 
@@ -380,6 +562,9 @@ const updateStats = () => {
     let totalFull = 0;
     let count = 0;
 
+    let minTime = Infinity;
+    let maxTime = 0;
+
     const safeSub = (a, b) => (a && b) ? (a - b) : 0;
 
     completedOrders.forEach(o => {
@@ -387,15 +572,15 @@ const updateStats = () => {
         let tFull, tQueue, tPay, tPrep;
 
         if (isDineIn) {
-            tFull = safeSub(o.paidAt, o.enteredAt);
-            tQueue = safeSub(o.orderedAt, o.enteredAt);
-            tPrep = safeSub(o.deliveredAt, o.orderedAt);
-            tPay = safeSub(o.paidAt, o.deliveredAt);
+            tFull = safeSub(o.paid_at, o.entered_at);
+            tQueue = safeSub(o.ordered_at, o.entered_at);
+            tPrep = safeSub(o.delivered_at, o.ordered_at);
+            tPay = safeSub(o.paid_at, o.delivered_at);
         } else {
-            tFull = safeSub(o.deliveredAt, o.enteredAt);
-            tQueue = safeSub(o.orderedAt, o.enteredAt);
-            tPay = safeSub(o.paidAt, o.orderedAt);
-            tPrep = safeSub(o.deliveredAt, o.paidAt);
+            tFull = safeSub(o.delivered_at, o.entered_at);
+            tQueue = safeSub(o.ordered_at, o.entered_at);
+            tPay = safeSub(o.paid_at, o.ordered_at);
+            tPrep = safeSub(o.delivered_at, o.paid_at);
         }
 
         if (tFull > 0) {
@@ -404,6 +589,9 @@ const updateStats = () => {
             totalPay += tPay;
             totalPrep += tPrep;
             count++;
+
+            if (tFull < minTime) minTime = tFull;
+            if (tFull > maxTime) maxTime = tFull;
         }
     });
 
@@ -421,6 +609,15 @@ const updateStats = () => {
         if (avgPrep > max) { bottle = 'Prep'; max = avgPrep; }
 
         elBottleneck.innerText = bottle;
+
+        // Update new stats
+        const elTotal = document.getElementById('total-orders');
+        const elBest = document.getElementById('best-time');
+        const elWorst = document.getElementById('worst-time');
+
+        if (elTotal) elTotal.innerText = count.toString();
+        if (elBest) elBest.innerText = formatTime(minTime);
+        if (elWorst) elWorst.innerText = formatTime(maxTime);
     }
 };
 
@@ -431,7 +628,7 @@ setInterval(() => {
     activeOrders.forEach(o => {
         const el = document.getElementById(`timer-${o.id}`);
         if (el) {
-            el.innerText = formatTime(now - o.enteredAt);
+            el.innerText = formatTime(now - o.entered_at);
         }
     });
 }, 1000);

@@ -55,6 +55,99 @@ header {
   }
 }
 
+/* Welcome Screen */
+/* Welcome Screen */
+.welcome-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--bg-color);
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(198, 156, 109, 0.05) 0%, transparent 20%),
+    radial-gradient(circle at 90% 80%, rgba(100, 100, 255, 0.03) 0%, transparent 20%);
+  z-index: 1000;
+  animation: fadeIn 0.5s ease-in-out;
+  padding: 1rem;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--panel-bg);
+  padding: 3rem;
+  border-radius: 2rem;
+  border: var(--glass-border);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+@media (max-width: 600px) {
+  .welcome-content {
+    padding: 2rem;
+    gap: 1rem;
+    width: 90%;
+  }
+}
+
+.welcome-logo {
+  height: 6rem;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+.welcome-title {
+  font-size: 2.5rem;
+  color: #fff;
+  margin: 0;
+}
+
+.welcome-subtitle {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.location-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-location {
+  background: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.btn-location:hover {
+  background: var(--primary-color);
+  color: #000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.hidden {
+  display: none !important;
+}
+
 .logo {
   display: flex;
   align-items: center;
@@ -71,14 +164,34 @@ header {
   object-fit: contain;
 }
 
-.stats-summary {
+/* Stats Grid Wrapper */
+.stats-grid {
   display: flex;
-  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
   background: var(--panel-bg);
-  padding: 0.75rem 1.5rem;
-  border-radius: 50px;
+  padding: 1rem 2rem;
+  border-radius: 20px;
   border: var(--glass-border);
   backdrop-filter: blur(10px);
+  width: 100%;
+  max-width: 600px;
+}
+
+@media (min-width: 600px) {
+  .stats-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    border-radius: 50px;
+  }
 }
 
 .stat-item {
@@ -101,6 +214,14 @@ header {
 
 .stat-item .value.warning {
   color: var(--danger-color);
+}
+
+.stat-item .value.warning-light {
+  color: #ffa726;
+}
+
+.stat-item .value.success {
+  color: var(--success-color);
 }
 
 .controls {
@@ -619,4 +740,99 @@ footer {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* Location Picker */
+.location-picker {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-left: 1rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.location-picker:hover {
+  background: rgba(198, 156, 109, 0.15);
+}
+
+.location-picker option {
+  background: #222;
+  color: #fff;
+  padding: 10px;
+}
+
+/* Location Header Display */
+.location-display-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.location-badge {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1.2rem;
+}
+
+.btn-icon:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(198, 156, 109, 0.1);
+}
+
+/* Update Header Layout for Mobile */
+@media (max-width: 600px) {
+  .logo {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .location-display-wrapper {
+    margin-left: 0;
+  }
+}
+
+/* Date Picker */
+.date-picker-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.date-picker-input:focus {
+  border-color: var(--primary-color);
+  background: rgba(0, 0, 0, 0.5);
 }
