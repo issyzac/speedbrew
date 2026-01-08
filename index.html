@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpeedBrew - Service Speed Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <div class="logo">
+        <span class="icon">☕</span>
+        <h1>SpeedBrew</h1>
+      </div>
+      <div class="stats-summary" id="stats-bar">
+        <!-- Stats injected here -->
+        <div class="stat-item">
+          <span class="label">Avg Time</span>
+          <span class="value" id="avg-time">--:--</span>
+        </div>
+        <div class="stat-item">
+          <span class="label">Bottleneck</span>
+          <span class="value warning" id="bottleneck-stage">None</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="controls">
+        <button id="btn-customer-in" class="btn-primary-large">
+          <span class="plus">+</span> Customer Entered
+        </button>
+        <div id="limit-warning" class="limit-warning">Max limit (5) reached. Finish an order.</div>
+      </section>
+
+      <section class="active-orders" id="orders-container">
+        <!-- Order Cards will go here -->
+        <div class="empty-state">
+          <p>No active orders. Tap "+" when a customer enters.</p>
+        </div>
+      </section>
+
+      <section class="history-section">
+        <h2>Order History</h2>
+        <div id="history-container" class="history-list">
+          <!-- History items go here -->
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Harakati za Enzi. All rights reserved.</p>
+    </footer>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
