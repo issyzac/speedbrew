@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="icon" type="image/png" href="/src/assets/hze-icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SpeedBrew - Service Speed Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <div id="app">
     <header>
       <div class="logo">
-        <span class="icon">☕</span>
+        <img src="/src/assets/hze-icon.png" alt="Logo" class="logo-icon" />
         <h1>SpeedBrew</h1>
       </div>
       <div class="stats-summary" id="stats-bar">
@@ -48,8 +48,17 @@
 
       <section class="history-section">
         <h2>Order History</h2>
-        <div id="history-container" class="history-list">
-          <!-- History items go here -->
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="std">Takeaway / Delivery</button>
+          <button class="tab-btn" data-tab="dinein">Dine-in</button>
+        </div>
+
+        <div id="tab-std" class="tab-content active">
+          <div id="history-container-std" class="history-list"></div>
+        </div>
+        <div id="tab-dinein" class="tab-content">
+          <div id="history-container-dinein" class="history-list"></div>
         </div>
       </section>
     </main>

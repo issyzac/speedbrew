@@ -59,10 +59,16 @@ header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--primary-color);
-  text-shadow: 0 0 10px var(--primary-glow);
+  color: #fff;
+  text-shadow: none;
+}
+
+.logo-icon {
+  height: 2.5rem;
+  width: auto;
+  object-fit: contain;
 }
 
 .stats-summary {
@@ -104,18 +110,18 @@ header {
 }
 
 .btn-primary-large {
-  background: linear-gradient(135deg, var(--primary-color), #8d6e4b);
-  border: none;
+  background: transparent;
+  border: 2px solid var(--primary-color);
   border-radius: 20px;
   padding: 1.5rem 3rem;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--primary-color);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  box-shadow: 0 4px 15px var(--primary-glow);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -137,7 +143,8 @@ header {
 
 .plus {
   font-size: 1.5rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--primary-color);
+  color: #000;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -322,6 +329,65 @@ header {
   letter-spacing: 1px;
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .history-list {
   display: flex;
   flex-direction: column;
@@ -453,6 +519,11 @@ header {
   color: #fff;
 }
 
+.tag-select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Visual Breakdown Bar */
 .breakdown-bar {
   display: flex;
@@ -518,4 +589,34 @@ footer {
   font-size: 0.85rem;
   opacity: 0.7;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Cancel button for Queue items */
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--danger-color);
+  color: var(--danger-color);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.btn-cancel:hover {
+  background: var(--danger-color);
+  color: #fff;
+  opacity: 1;
+}
+
+/* Adjust header to fit cancel btn */
+.order-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
