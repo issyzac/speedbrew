@@ -940,7 +940,6 @@ footer {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: 1rem;
 }
 
 .location-badge {
@@ -974,16 +973,7 @@ footer {
 }
 
 /* Update Header Layout for Mobile */
-@media (max-width: 600px) {
-  .logo {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
 
-  .location-display-wrapper {
-    margin-left: 0;
-  }
-}
 
 /* Date Picker */
 .date-picker-input {
