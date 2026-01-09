@@ -9,7 +9,8 @@ create table orders (
   ordered_at bigint,
   paid_at bigint,
   delivered_at bigint,
-  location text
+  location text,
+  comments text
 );
 
 -- Enable Row Level Security (optional but recommended)

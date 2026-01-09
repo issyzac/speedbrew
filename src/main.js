@@ -160,13 +160,14 @@ if (btnAdd) {
 
         const newOrder = {
             name: '',
-            tag: 'Dine-in', // Default to Dine-in
+            tag: 'Pending', // Order type to be determined later
             location: currentLocation, // Tag with current location
             entered_at: Date.now(),
             ordered_at: null,
             paid_at: null,
             delivered_at: null,
-            status: 'queue'
+            status: 'queue',
+            comments: ''
         };
 
         const { data, error } = await supabase
@@ -198,26 +199,61 @@ const updateName = async (id, newName) => {
 
 const updateTag = async (id, newTag) => {
     const order = orders.find(o => o.id === id);
-    if (order && order.status === 'queue') {
+    if (order && order.status !== 'done') {
         order.tag = newTag;
         render(); // Re-render for UI update
         await supabase.from('orders').update({ tag: newTag }).eq('id', id);
     }
 }
 
-// DELETE/CANCEL ORDER
-const cancelOrder = async (id) => {
-    if (!confirm('Cancel this order?')) return;
-
-    // Optimistic update
-    orders = orders.filter(o => o.id !== id);
-    render();
-
-    const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) {
-        console.error('Error deleting order:', error);
+const updateComments = async (id, newComments) => {
+    const order = orders.find(o => o.id === id);
+    if (order) {
+        order.comments = newComments;
+        // Optimistic update done above, now sync
+        await supabase.from('orders').update({ comments: newComments }).eq('id', id);
     }
 }
+
+// DELETE/CANCEL ORDER
+const cancelOrder = async (id) => {
+    // Store the ID of the order to cancel
+    pendingCancelId = id;
+    // Show custom modal
+    if (confirmModal) confirmModal.classList.remove('hidden');
+};
+
+// Global variable to keep track of which order is being cancelled
+let pendingCancelId = null;
+
+// Modal elements
+const confirmModal = document.getElementById('confirm-modal');
+const modalCancelBtn = document.getElementById('modal-cancel');
+const modalConfirmBtn = document.getElementById('modal-confirm');
+
+if (modalCancelBtn) {
+    modalCancelBtn.addEventListener('click', () => {
+        // Hide modal without doing anything
+        if (confirmModal) confirmModal.classList.add('hidden');
+        pendingCancelId = null;
+    });
+}
+
+if (modalConfirmBtn) {
+    modalConfirmBtn.addEventListener('click', async () => {
+        if (pendingCancelId === null) return;
+        // Optimistic UI update
+        orders = orders.filter(o => o.id !== pendingCancelId);
+        render();
+        // Delete from Supabase
+        const { error } = await supabase.from('orders').delete().eq('id', pendingCancelId);
+        if (error) console.error('Error deleting order:', error);
+        // Hide modal and reset state
+        if (confirmModal) confirmModal.classList.add('hidden');
+        pendingCancelId = null;
+    });
+}
+
 
 const formatTime = (ms) => {
     if (isNaN(ms)) return "00:00";
@@ -226,10 +262,17 @@ const formatTime = (ms) => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
+const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '--:--';
+    const date = new Date(timestamp);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+};
+
 const getStatusLabel = (status) => {
     switch (status) {
         case 'queue': return 'Waiting to Order';
-        case 'payment': return 'Expected Payment';
         case 'prep': return 'Preparing';
         case 'served': return 'Served / Eating';
         case 'done': return 'Completed';
@@ -249,14 +292,6 @@ const advanceOrder = async (id) => {
 
     if (order.status === 'queue') {
         updates.ordered_at = now;
-        if (isDineIn) {
-            updates.status = 'prep';
-        } else {
-            updates.status = 'payment';
-        }
-    }
-    else if (order.status === 'payment') {
-        updates.paid_at = now;
         updates.status = 'prep';
     }
     else if (order.status === 'prep') {
@@ -268,7 +303,6 @@ const advanceOrder = async (id) => {
         }
     }
     else if (order.status === 'served') {
-        updates.paid_at = now;
         updates.status = 'done';
     }
 
@@ -283,6 +317,27 @@ const advanceOrder = async (id) => {
         .eq('id', id);
 
     if (error) console.error('Error updating status:', error);
+};
+
+// --- MARK PAYMENT (OPTIONAL) ---
+const markPaid = async (id) => {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+
+    const now = Date.now();
+    const updates = { paid_at: now };
+
+    // Apply locally
+    Object.assign(order, updates);
+    render();
+
+    // Sync to DB
+    const { error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', id);
+
+    if (error) console.error('Error updating payment:', error);
 };
 
 const render = () => {
@@ -329,17 +384,15 @@ const renderActive = () => {
 
             if (order.status === 'queue') {
                 btnText = 'Mark Ordered';
-            } else if (order.status === 'payment') {
-                btnText = 'Mark Paid';
             } else if (order.status === 'prep') {
-                btnText = isDineIn ? 'Mark Served' : 'Mark Served & Done';
+                btnText = isDineIn ? 'Mark Served' : 'Mark Done';
                 btnClass = isDineIn ? 'action-btn' : 'action-btn finish';
             } else if (order.status === 'served') {
-                btnText = 'Mark Paid & Done';
+                btnText = 'Mark Done';
                 btnClass = 'action-btn finish';
             }
 
-            // Determine Progress Dots
+            // Determine Progress Dots (simplified to 3 steps: Queue → Prep → Served/Done)
             let dot1Idx = 0, dot2Idx = 0, dot3Idx = 0;
 
             if (isDineIn) {
@@ -348,8 +401,7 @@ const renderActive = () => {
                 else if (order.status === 'served') { dot1Idx = 2; dot2Idx = 2; dot3Idx = 1; }
             } else {
                 if (order.status === 'queue') { dot1Idx = 1; }
-                else if (order.status === 'payment') { dot1Idx = 2; dot2Idx = 1; }
-                else if (order.status === 'prep') { dot1Idx = 2; dot2Idx = 2; dot3Idx = 1; }
+                else if (order.status === 'prep') { dot1Idx = 2; dot2Idx = 1; }
             }
 
             const getDotClass = (idx) => {
@@ -359,17 +411,25 @@ const renderActive = () => {
             }
 
             const t1 = 'Queue';
-            const t2 = isDineIn ? 'Prep' : 'Pay';
-            const t3 = isDineIn ? 'Served' : 'Prep';
+            const t2 = 'Prep';
+            const t3 = isDineIn ? 'Served' : 'Done';
 
-            const tags = ['Dine-in', 'Takeaway', 'Delivery', 'Pickup'];
+            const tags = ['Pending', 'Dine-in', 'Takeaway', 'Delivery'];
             const options = tags.map(t => `<option value="${t}" ${order.tag === t ? 'selected' : ''}>${t}</option>`).join('');
 
-            const isSelectDisabled = order.status !== 'queue';
+            const isSelectDisabled = order.status === 'done';
 
             // Cancel button only if status is queue
             const cancelBtnHTML = order.status === 'queue'
                 ? `<button class="btn-cancel" data-cancel-id="${order.id}" title="Cancel Order">✕</button>`
+                : '';
+
+            // Payment button (optional metric)
+            const isPaid = order.paid_at !== null;
+            const paymentBtnHTML = order.status !== 'queue' && order.status !== 'done'
+                ? `<button class="btn-payment ${isPaid ? 'paid' : ''}" data-pay-id="${order.id}" title="${isPaid ? 'Paid ✓' : 'Mark as Paid'}">
+                     ${isPaid ? '💰 Paid' : '💰 Mark Paid'}
+                   </button>`
                 : '';
 
             card.innerHTML = `
@@ -380,6 +440,7 @@ const renderActive = () => {
                         <select class="tag-select" data-id="${order.id}" ${isSelectDisabled ? 'disabled' : ''}>${options}</select>
                     </div>
                     <div class="order-header-right">
+                        <span class="entry-time" title="Entry Time">🕐 ${formatTimestamp(order.entered_at)}</span>
                         <span class="total-time" id="timer-${order.id}">00:00</span>
                         ${cancelBtnHTML}
                     </div>
@@ -389,11 +450,22 @@ const renderActive = () => {
                     <div class="${getDotClass(dot2Idx)}" title="${t2}"></div>
                     <div class="${getDotClass(dot3Idx)}" title="${t3}"></div>
                 </div>
+                <div class="comments-section">
+                    <textarea 
+                        class="input-comments" 
+                        placeholder="Add comments or observations..." 
+                        data-id="${order.id}"
+                        rows="2"
+                    >${order.comments || ''}</textarea>
+                </div>
                 <div class="current-action">
                     <span class="status-label">${getStatusLabel(order.status)}</span>
-                    <button class="${btnClass}" data-btn-id="${order.id}">
-                        ${btnText}
-                    </button>
+                    <div class="action-buttons">
+                        ${paymentBtnHTML}
+                        <button class="${btnClass}" data-btn-id="${order.id}">
+                            ${btnText}
+                        </button>
+                    </div>
                 </div>
             `;
             container.appendChild(card);
@@ -409,6 +481,18 @@ const renderActive = () => {
             const btnCancel = card.querySelector(`button[data-cancel-id="${order.id}"]`);
             if (btnCancel) {
                 btnCancel.addEventListener('click', () => cancelOrder(order.id));
+            }
+
+            // Payment listener
+            const btnPayment = card.querySelector(`button[data-pay-id="${order.id}"]`);
+            if (btnPayment && !isPaid) {
+                btnPayment.addEventListener('click', () => markPaid(order.id));
+            }
+
+            // Comments listener
+            const commentsTextarea = card.querySelector('textarea.input-comments');
+            if (commentsTextarea) {
+                commentsTextarea.addEventListener('input', (e) => updateComments(order.id, e.target.value));
             }
         });
     }
@@ -471,12 +555,14 @@ const renderHistory = () => {
                 <div class="history-info">
                     <span class="history-id">#${order.id}</span>
                     <span class="history-name">${order.name || 'Anonymous'}</span>
-                    <span class="history-tag">${order.tag || 'Dine-in'}</span>
+                    <span class="history-tag">${order.tag || 'Pending'}</span>
+                    <span class="history-entry-time" title="Entry Time">🕐 ${formatTimestamp(order.entered_at)}</span>
                 </div>
                 <div class="history-stats">
                     <span class="stat-pill" title="Total Time">⏱ ${formatTime(totalTime)}</span>
                 </div>
             </div>
+            ${order.comments ? `<div class="history-comments">💬 ${order.comments}</div>` : ''}
             <div class="breakdown-bar">
                 ${barHTML}
             </div>

@@ -106,6 +106,22 @@
         <p>&copy; 2026 Harakati za Enzi. All rights reserved.</p>
       </footer>
     </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Cancel Order</h3>
+        </div>
+        <div class="modal-body">
+          <p id="modal-message">Are you sure you want to cancel this order?</p>
+        </div>
+        <div class="modal-actions">
+          <button id="modal-cancel" class="btn-modal btn-secondary">No, Keep It</button>
+          <button id="modal-confirm" class="btn-modal btn-danger">Yes, Cancel Order</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>
