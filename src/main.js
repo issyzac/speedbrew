@@ -206,14 +206,60 @@ const updateTag = async (id, newTag) => {
     }
 }
 
-const updateComments = async (id, newComments) => {
+const parseComments = (raw) => {
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+        return [{ text: raw, timestamp: null }];
+    } catch (e) {
+        return [{ text: raw, timestamp: null }];
+    }
+};
+
+const addComment = async (id, text) => {
+    if (!text || !text.trim()) return;
+
     const order = orders.find(o => o.id === id);
     if (order) {
-        order.comments = newComments;
-        // Optimistic update done above, now sync
-        await supabase.from('orders').update({ comments: newComments }).eq('id', id);
+        const existing = parseComments(order.comments);
+        const newComment = {
+            text: text.trim(),
+            timestamp: Date.now()
+        };
+        const updated = [...existing, newComment];
+
+        // Update local
+        order.comments = JSON.stringify(updated);
+        render(); // Re-render to show new list
+
+        // Sync to DB
+        await supabase.from('orders').update({ comments: order.comments }).eq('id', id);
     }
 }
+
+const renderCommentsHTML = (order) => {
+    const comments = parseComments(order.comments);
+    const listHTML = comments.map(c => `
+        <div class="comment-item">
+            <span class="comment-text">${c.text}</span>
+            <span class="comment-meta">${c.timestamp ? formatTimestamp(c.timestamp) : ''}</span>
+        </div>
+    `).join('');
+
+    return `
+        <div class="comments-container">
+            <div class="comments-list">${listHTML}</div>
+            <div class="add-comment-row">
+                <input type="text" 
+                    class="input-new-comment" 
+                    placeholder="Add comment..." 
+                    data-id="${order.id}">
+                <button class="btn-add-comment" data-id="${order.id}">+</button>
+            </div>
+        </div>
+    `;
+};
 
 // DELETE/CANCEL ORDER
 const cancelOrder = async (id) => {
@@ -450,14 +496,8 @@ const renderActive = () => {
                     <div class="${getDotClass(dot2Idx)}" title="${t2}"></div>
                     <div class="${getDotClass(dot3Idx)}" title="${t3}"></div>
                 </div>
-                <div class="comments-section">
-                    <textarea 
-                        class="input-comments" 
-                        placeholder="Add comments or observations..." 
-                        data-id="${order.id}"
-                        rows="2"
-                    >${order.comments || ''}</textarea>
-                </div>
+                ${order.status === 'served' ? `
+                ${order.status === 'served' ? renderCommentsHTML(order) : ''}` : ''}
                 <div class="current-action">
                     <span class="status-label">${getStatusLabel(order.status)}</span>
                     <div class="action-buttons">
@@ -490,9 +530,19 @@ const renderActive = () => {
             }
 
             // Comments listener
-            const commentsTextarea = card.querySelector('textarea.input-comments');
-            if (commentsTextarea) {
-                commentsTextarea.addEventListener('input', (e) => updateComments(order.id, e.target.value));
+            // Comments listener
+            const btnAdd = card.querySelector(`.btn-add-comment[data-id="${order.id}"]`);
+            const inputAdd = card.querySelector(`.input-new-comment[data-id="${order.id}"]`);
+
+            if (btnAdd && inputAdd) {
+                const submit = () => {
+                    addComment(order.id, inputAdd.value);
+                    inputAdd.value = '';
+                };
+                btnAdd.addEventListener('click', submit);
+                inputAdd.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') submit();
+                });
             }
         });
     }
@@ -506,7 +556,7 @@ const renderHistory = () => {
         o.status === 'done' &&
         (o.location === currentLocation || (!o.location && currentLocation === 'Mbezi')) &&
         getDateString(o.entered_at) === selectedDate
-    ).sort((a, b) => b.delivered_at - a.delivered_at);
+    ).sort((a, b) => (b.delivered_at || 0) - (a.delivered_at || 0));
 
     historyStd.innerHTML = '';
     historyDine.innerHTML = '';
@@ -562,11 +612,26 @@ const renderHistory = () => {
                     <span class="stat-pill" title="Total Time">⏱ ${formatTime(totalTime)}</span>
                 </div>
             </div>
-            ${order.comments ? `<div class="history-comments">💬 ${order.comments}</div>` : ''}
+            ${renderCommentsHTML(order)}
             <div class="breakdown-bar">
                 ${barHTML}
             </div>
         `;
+
+        const btnAdd = div.querySelector(`.btn-add-comment[data-id="${order.id}"]`);
+        const inputAdd = div.querySelector(`.input-new-comment[data-id="${order.id}"]`);
+
+        if (btnAdd && inputAdd) {
+            const submit = () => {
+                addComment(order.id, inputAdd.value);
+                inputAdd.value = '';
+            };
+            btnAdd.addEventListener('click', submit);
+            inputAdd.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submit();
+            });
+        }
+
         return div;
     };
 
