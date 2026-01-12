@@ -206,6 +206,22 @@ const updateTag = async (id, newTag) => {
     }
 }
 
+const formatTime = (ms) => {
+    if (isNaN(ms)) return "00:00";
+    const s = Math.floor((ms / 1000) % 60);
+    const m = Math.floor((ms / 1000 / 60));
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '--:--';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '--:--';
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+};
+
 const parseComments = (raw) => {
     if (!raw) return [];
     try {
@@ -301,20 +317,7 @@ if (modalConfirmBtn) {
 }
 
 
-const formatTime = (ms) => {
-    if (isNaN(ms)) return "00:00";
-    const s = Math.floor((ms / 1000) % 60);
-    const m = Math.floor((ms / 1000 / 60));
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-};
 
-const formatTimestamp = (timestamp) => {
-    if (!timestamp) return '--:--';
-    const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-};
 
 const getStatusLabel = (status) => {
     switch (status) {
@@ -575,8 +578,8 @@ const renderHistory = () => {
         } else {
             totalTime = safeSub(order.delivered_at, order.entered_at);
             queueTime = safeSub(order.ordered_at, order.entered_at);
-            payTime = safeSub(order.paid_at, order.ordered_at);
-            prepTime = safeSub(order.delivered_at, order.paid_at);
+            prepTime = safeSub(order.delivered_at, order.ordered_at);
+            payTime = 0;
         }
 
         const pQueue = totalTime > 0 ? (queueTime / totalTime) * 100 : 0;
@@ -726,12 +729,11 @@ const updateStats = () => {
             tFull = safeSub(o.paid_at, o.entered_at);
             tQueue = safeSub(o.ordered_at, o.entered_at);
             tPrep = safeSub(o.delivered_at, o.ordered_at);
-            tPay = safeSub(o.paid_at, o.delivered_at);
         } else {
             tFull = safeSub(o.delivered_at, o.entered_at);
             tQueue = safeSub(o.ordered_at, o.entered_at);
-            tPay = safeSub(o.paid_at, o.ordered_at);
-            tPrep = safeSub(o.delivered_at, o.paid_at);
+            tPrep = safeSub(o.delivered_at, o.ordered_at);
+            tPay = 0;
         }
 
         if (tFull > 0) {
